@@ -14,23 +14,32 @@ working_dir = ""
 
 EXCLUDES=["libc6", "libgcc1", "gcc-8-base", "<debconf-2.0>", "debconf"]
 
-# Really just for tracking a bit more about a symbol stored in our table
-class Symbol:
-    name = ""
-    libs = []
-    metas = []
+LDD_EXCLUDES=["libc.so.6", "ld-linux-x86-64.so.2"]
 
-    def __init__(self,name,libs,metas):
-        self.name = name
-        self.libs = libs
-        self.metas = metas
+def exclude_symbol(exclude, libs):
+    for e in exclude:
+        for l in libs:
+            if e in l:
+                return True
+    return False
+
+def exclude_src(dep, excludes):
+    for e in excludes:
+        if dep in e:
+            return True
+    return False
+
+
+class Lib:
+    def __init__(self, soname, needed):
+        self.soname = soname
+        self.needed = needed
+        self.symbols = []
+
+    def add_symbol(self, symbol):
+        self.symbols.append(symbol)
 
 class Meta:
-    package_name = ""
-    package_deb = ""
-    has_symbols = False
-    shared_libs = []
-
     def __init__(self,package_name,package_deb,has_symbols,shared_libs):
         self.package_name = package_name
         self.package_deb = package_deb
@@ -41,21 +50,6 @@ class Meta:
         if lib not in self.shared_libs:
             self.shared_libs.append(lib)
 
-    def json_state(self):
-        return self.__dict__
-
-    def as_meta(dct):
-        return Meta(dct["package_name"],dct["package_deb"],dct["has_symbols"],dct["shared_libs"])
-
-class MetaEncoder(json.JSONEncoder):
-
-    def default(self,o):
-        if isinstance(o, Meta):
-            return o.json_state()
-        else:
-            return json.JSONEncoder.default(self, o)
-
-
 def read_dependency_list(name):
     deps = {}
     with open(name, 'r') as f:
@@ -63,14 +57,50 @@ def read_dependency_list(name):
             deps[d] = True
     return deps
 
-def download_deps(deps,metas):
+def soname_lib(libpath):
+    soname = get_soname(libpath)
+    if soname is not None:
+        soname = soname.decode("utf-8")
+    else:
+        soname = trim_libname(libpath)
+    return soname 
+
+def trim_libname(libpath):
+    return libpath.split("/")[-1]
+
+def get_soname(path):
+    objdump = subprocess.Popen(['objdump', '-p', path], stdout=subprocess.PIPE)
+    out = subprocess.run(['grep','SONAME'], stdout=subprocess.PIPE, stdin=objdump.stdout)
+    if len(out.stdout) == 0:
+        return None
+    return out.stdout.strip().split()[-1] 
+
+def get_needed(path):
+    objdump = subprocess.Popen(['objdump', '-p', path], stdout=subprocess.PIPE)
+    out = subprocess.run(['grep','NEEDED'], stdout=subprocess.PIPE, stdin=objdump.stdout)
+    if len(out.stdout) == 0:
+        return []
+    deps = []
+    for l in out.stdout.decode("utf-8").splitlines():
+        deps.append(l.split()[1])
+    return deps 
+
+def download_deps(deps):
     debs = {}
 
-    for d in deps:
-        if d in metas:
-            continue
+    for d in deps: 
+        if exclude_src(d, EXCLUDES):
+            continue 
 
         print('fetching ' + d)
+
+        if os.path.exists(os.path.join(working_dir, d)):
+            home = os.getcwd()
+            os.chdir(os.path.join(working_dir, d))
+            debs[d] = glob.glob(d + '*.deb')[0]
+            os.chdir(home)
+            continue
+        
         try:
             out = subprocess.check_output(['apt-get', 'download', d], stderr=subprocess.STDOUT)
             deb = glob.glob(d + '*.deb')[0]
@@ -81,15 +111,20 @@ def download_deps(deps,metas):
 
     return debs
 
-def trim_libname(libpath):
-    return libpath.split("/")[-1].split('.')[0]
-
 def gather_libs(path):
     out = subprocess.run(['find',path, '-name', 'lib*.so*'], stdout=subprocess.PIPE)
     libs = []
     for l in out.stdout.splitlines():
         libs.append(l.decode('utf-8'))
     return libs
+
+def read_so(meta, libs):
+    for l in meta.raw_libs:
+        soname = soname_lib(l)
+        if soname in libs:
+            continue
+        needed = [n for n in get_needed(l) if not exclude_src(n, LDD_EXCLUDES)]
+        libs[soname] = Lib(soname, needed) 
 
 def build_symbols(meta):
     added = set()
@@ -98,42 +133,46 @@ def build_symbols(meta):
             subprocess.check_call(['dpkg', '-x', meta.package_deb, 'tmp']) 
             libs = gather_libs("tmp")
             for l in libs:
-                n = trim_libname(l)
+                if os.path.islink(l):
+                    continue
+                n = soname_lib(l)
                 if n in added:
                     continue
-                subprocess.check_call(['dpkg-gensymbols', '-v0', '-p' + meta.package_name, '-e{}'.format(l), '-Osymbols-t'])
+                subprocess.check_call(['dpkg-gensymbols', '-v0', '-p' + meta.package_name, '-e{}'.format(l), '-Osymbols-t'], stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
                 with open("symbols-t") as f2:
                     f.write(f2.read())
                 added.add(n)
                 os.remove("symbols-t")
             meta.has_symbols = True
+            meta.raw_libs = [l for l in libs if not os.path.islink(l)]
         except subprocess.CalledProcessError as err:
             print(err)
             print('failed to build symbols file for ' + meta.package_deb)
     
 
-def extract_debs(debs,metas):
+def extract_debs(debs):
     # Create some metadata about our little repository
     home = os.getcwd()
+    metas = {}
+    libs = {}
 
     for dep,deb in debs.items():
         debhome = os.path.join(working_dir,dep)
 
-        if os.path.exists(debhome):
-            continue
+        if not os.path.exists(debhome):
+            os.mkdir(debhome)
+            os.rename(os.path.join(working_dir,deb),os.path.join(debhome,deb))
+            os.chdir(debhome)
 
-        os.mkdir(debhome)
-        os.rename(os.path.join(working_dir,deb),os.path.join(debhome,deb))
-        os.chdir(debhome)
+            print('Extracting ' + deb)
+            out = subprocess.check_output(['ar', '-xv', deb])
 
-        print('Extracting ' + deb)
-        out = subprocess.check_output(['ar', '-xv', deb])
-
-        if os.path.exists("control.tar.xz"):
-            out = subprocess.check_output(['tar', 'xf', 'control.tar.xz'])
-        elif os.path.exists("control.tar.gz"):
-            out = subprocess.check_output(['tar', '-xzf', 'control.tar.gz'])
-
+            if os.path.exists("control.tar.xz"):
+                out = subprocess.check_output(['tar', 'xf', 'control.tar.xz'])
+            elif os.path.exists("control.tar.gz"):
+                out = subprocess.check_output(['tar', '-xzf', 'control.tar.gz']) 
+        else:
+            os.chdir(debhome)
 
         # Test for symbol file
         if (os.path.exists('symbols')):
@@ -141,11 +180,15 @@ def extract_debs(debs,metas):
         meta = Meta(dep, deb, False, [])
         build_symbols(meta)
 
+        read_so(meta, libs)
+
         metas[deb] = meta
 
         os.chdir(home) 
 
-def parse_symbols(meta,symbols):
+    return metas, libs
+
+def parse_symbols(meta,libs):
     # We'll point every symbol to its metadata for now
     # Build a true repo later
 
@@ -155,34 +198,15 @@ def parse_symbols(meta,symbols):
             if l[0] != " " and l[0] != "|" and l[0] != '*':
                 current_lib = l.split()[0]
                 meta.add_lib(current_lib)
+                if current_lib not in libs:
+                    print("Warning, lib {} not in lib table!".format(current_lib))
             else:
                 toks = l.split()
                 if toks[0] == "|" or toks[0] == "*":
                     pass
                 else:
                     name = toks[0].split("@")[0]
-                    if name in symbols:
-                        # Possible conflict (really only an issue between packages for now)
-                        symbols[name].libs.append(current_lib)
-                        symbols[name].metas.append(meta)
-                    else:    
-                        symbols[name] = Symbol(name,[current_lib],[meta])
-        
-
-def load_meta():
-    metas = {}
-    if os.path.exists(os.path.join(working_dir, 'meta.txt')):
-        with open(os.path.join(working_dir, 'meta.txt'), 'r') as f:
-            for line in f:
-                m = json.loads(line, object_hook=Meta.as_meta) 
-                metas[m.package_name] = m
-
-    return metas
-
-def save_meta(meta):
-    with open(os.path.join(working_dir,'meta.txt'), 'w') as f:
-        for k,m in metas.items():
-            f.write(json.dumps(m, cls=MetaEncoder) + '\n')
+                    libs[current_lib].add_symbol(name)
 
 def save_packages(meta):
     with open(os.path.join(working_dir,'packages.txt'), 'w') as f:
@@ -190,35 +214,25 @@ def save_packages(meta):
             for l in m.shared_libs:
                 f.write("{} {}\n".format(l, m.package_name)) 
 
-def exclude_symbol(exclude, libs):
-    for e in exclude:
-        for l in libs:
-            if e in l:
-                return True
-    return False
+def save_libs(libs):
+    with open(os.path.join(working_dir,'libraries.txt'), 'w') as f:
+        for k,l in libs.items():
+            for d in l.needed:
+                f.write("{} {}\n".format(l.soname, d)) 
 
-def load_symbols(metas):
-    symbols = {}
-    
+def load_symbols(metas, libs):
     for k,m in metas.items():
         if m.has_symbols:
-            parse_symbols(m, symbols)
+            parse_symbols(m, libs)
 
-    return symbols
-
-def save_symbols(symbols):
-    with open(os.path.join(working_dir,'symbols.txt'), 'w') as f:
-        f.write("{}\n".format(len(symbols)))
-        for k,s in symbols.items():
-            if exclude_symbol(["libc.so"], s.libs):
-                continue 
-
-            f.write("{} {}\n".format(s.name, s.libs[0]))
-
-            #for l in s.libs:
-            #    f.write(" {}".format(l))
-            #f.write("\n")
-
+def save_symbols(libs):
+    symbols_dir = os.path.join(working_dir, "symbols")
+    if not os.path.exists(symbols_dir):
+        os.mkdir(symbols_dir)
+    for k,l in libs.items():
+        with open(os.path.join(symbols_dir, l.soname + ".symbols"), 'w') as f:
+            for s in l.symbols:
+                f.write("{} {}\n".format(l.soname, s))
 
 def load_trace(name):
     calls = []
@@ -283,7 +297,6 @@ usage = "usage: %prog [options] dependency-list"
 parser = OptionParser(usage=usage)
 parser.add_option('-d', '--dir', dest='working_dir', default='symbol-out', help='use DIR as working output directory', metavar='DIR')
 parser.add_option('-t', '--trace', dest='trace', help='load trace file DIR', metavar='TRACE')
-parser.add_option('-l', '--load', action='store_true', help='jump straight to loading the repository symbols')
 parser.add_option('-o', '--outfile', dest='outfile', default=None, help='dump json data to OUTFILE for post-processing', metavar='OUTFILE')
 parser.add_option('-s', '--src', action='store_true', default=None, help='download source packages from dep file', metavar='SRC')
 
@@ -291,22 +304,19 @@ parser.add_option('-s', '--src', action='store_true', default=None, help='downlo
 
 working_dir = options.working_dir
 
-metas = load_meta()
-
 if len(args) < 1:
     print("error: must supply dependency-list")
     parser.print_usage()
     sys.exit(1)
 
-if not options.load:
-    deps=read_dependency_list(args[0])
-    debs=download_deps(deps,metas)
-    extract_debs(debs,metas)
+deps=read_dependency_list(args[0])
+debs=download_deps(deps)
+metas, libs = extract_debs(debs)
 
-symbols = load_symbols(metas)
-save_meta(metas)
+load_symbols(metas, libs)
+save_libs(libs)
 save_packages(metas)
-save_symbols(symbols)
+save_symbols(libs)
 
 if options.trace is not None:
     calls = load_trace(options.trace)
