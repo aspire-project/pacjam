@@ -215,10 +215,20 @@ def save_packages(meta):
                 f.write("{} {}\n".format(l, m.package_name)) 
 
 def save_libs(libs):
-    with open(os.path.join(working_dir,'libraries.txt'), 'w') as f:
+    meta_dir = os.path.join(working_dir, "meta")
+    if not os.path.exists(meta_dir):
+        os.mkdir(meta_dir) 
+
+    with open(os.path.join(working_dir, "libraries.txt"), 'w') as f:
+        f.write("{}\n".format(len(libs)))
         for k,l in libs.items():
+            f.write("{}\n".format(l.soname))
+
+    for k,l in libs.items():
+        with open(os.path.join(meta_dir, l.soname + ".libraries"), 'w') as f:
+            f.write("{}\n".format(len(l.needed)))
             for d in l.needed:
-                f.write("{} {}\n".format(l.soname, d)) 
+                f.write("{}\n".format(d)) 
 
 def load_symbols(metas, libs):
     for k,m in metas.items():
@@ -226,11 +236,11 @@ def load_symbols(metas, libs):
             parse_symbols(m, libs)
 
 def save_symbols(libs):
-    symbols_dir = os.path.join(working_dir, "symbols")
-    if not os.path.exists(symbols_dir):
-        os.mkdir(symbols_dir)
+    meta_dir = os.path.join(working_dir, "meta")
+    if not os.path.exists(meta_dir):
+        os.mkdir(meta_dir)
     for k,l in libs.items():
-        with open(os.path.join(symbols_dir, l.soname + ".symbols"), 'w') as f:
+        with open(os.path.join(meta_dir, l.soname + ".symbols"), 'w') as f:
             for s in l.symbols:
                 f.write("{} {}\n".format(l.soname, s))
 
