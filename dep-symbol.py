@@ -14,7 +14,7 @@ working_dir = ""
 
 EXCLUDES=["libc6", "libgcc1", "gcc-8-base", "<debconf-2.0>", "debconf"]
 
-LDD_EXCLUDES=["libc.so.6", "ld-linux-x86-64.so.2"]
+LDD_EXCLUDES=["libc.so.6", "ld-linux-x86-64.so.2", "libdl.so.2", "libpthread.so.0"]
 
 def exclude_symbol(exclude, libs):
     for e in exclude:
