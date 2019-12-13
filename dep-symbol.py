@@ -10,11 +10,12 @@ from optparse import OptionParser
 import json
 
 ARCH='x86_64-linux-gnu'
-working_dir = ""
 
 EXCLUDES=["libc6", "libgcc1", "gcc-8-base", "<debconf-2.0>", "debconf"]
 
 LDD_EXCLUDES=["libc.so.6", "ld-linux-x86-64.so.2", "libdl.so.2", "libpthread.so.0"]
+
+options = {}
 
 def exclude_symbol(exclude, libs):
     for e in exclude:
@@ -94,9 +95,9 @@ def download_deps(deps):
 
         print('fetching ' + d)
 
-        if os.path.exists(os.path.join(working_dir, d)):
+        if os.path.exists(os.path.join(options.working_dir, d)):
             home = os.getcwd()
-            os.chdir(os.path.join(working_dir, d))
+            os.chdir(os.path.join(options.working_dir, d))
             debs[d] = glob.glob(d + '*.deb')[0]
             os.chdir(home)
             continue
@@ -105,7 +106,7 @@ def download_deps(deps):
             out = subprocess.check_output(['apt-get', 'download', d], stderr=subprocess.STDOUT)
             deb = glob.glob(d + '*.deb')[0]
             debs[d] = deb
-            os.rename(deb, working_dir + '/' + deb)
+            os.rename(deb, options.working_dir + '/' + deb)
         except:
             print("No package found for " + d)
 
@@ -157,11 +158,11 @@ def extract_debs(debs):
     libs = {}
 
     for dep,deb in debs.items():
-        debhome = os.path.join(working_dir,dep)
+        debhome = os.path.join(options.working_dir,dep)
 
         if not os.path.exists(debhome):
             os.mkdir(debhome)
-            os.rename(os.path.join(working_dir,deb),os.path.join(debhome,deb))
+            os.rename(os.path.join(options.working_dir,deb),os.path.join(debhome,deb))
             os.chdir(debhome)
 
             print('Extracting ' + deb)
@@ -192,7 +193,7 @@ def parse_symbols(meta,libs):
     # We'll point every symbol to its metadata for now
     # Build a true repo later
 
-    with open(os.path.join(working_dir, meta.package_name, "symbols")) as f:
+    with open(os.path.join(options.working_dir, meta.package_name, "symbols")) as f:
         current_lib = ""
         for l in f.readlines():
             if l[0] != " " and l[0] != "|" and l[0] != '*':
@@ -209,24 +210,22 @@ def parse_symbols(meta,libs):
                     libs[current_lib].add_symbol(name)
 
 def save_packages(meta):
-    with open(os.path.join(working_dir,'packages.txt'), 'w') as f:
+    with open(os.path.join(options.working_dir,'packages.txt'), 'w') as f:
         for k,m in metas.items():
             for l in m.shared_libs:
                 f.write("{} {}\n".format(l, m.package_name)) 
 
 def save_libs(libs):
-    meta_dir = os.path.join(working_dir, "meta")
+    meta_dir = os.path.join(options.working_dir, "meta")
     if not os.path.exists(meta_dir):
         os.mkdir(meta_dir) 
 
-    with open(os.path.join(working_dir, "libraries.txt"), 'w') as f:
-        f.write("{}\n".format(len(libs)))
+    with open(os.path.join(options.working_dir, "libraries.txt"), 'w') as f:
         for k,l in libs.items():
             f.write("{}\n".format(l.soname))
 
     for k,l in libs.items():
         with open(os.path.join(meta_dir, l.soname + ".libraries"), 'w') as f:
-            f.write("{}\n".format(len(l.needed)))
             for d in l.needed:
                 f.write("{}\n".format(d)) 
 
@@ -236,7 +235,7 @@ def load_symbols(metas, libs):
             parse_symbols(m, libs)
 
 def save_symbols(libs):
-    meta_dir = os.path.join(working_dir, "meta")
+    meta_dir = os.path.join(options.working_dir, "meta")
     if not os.path.exists(meta_dir):
         os.mkdir(meta_dir)
     for k,l in libs.items():
@@ -244,75 +243,97 @@ def save_symbols(libs):
             for s in l.symbols:
                 f.write("{} {}\n".format(l.soname, s))
 
-def load_trace(name):
-    calls = []
-    if os.path.exists(name):
-        with open(name, 'r') as f:
-            for line in f:
-                try:
-                    j = json.loads(line)
-                    calls.append(j)
-                except json.decoder.JSONDecodeError:
-                    continue
+def read_trace(path):
+    deps = []
+    with open(path, 'r') as f:
+        # See if we have it
+        for d in f.read().splitlines():
+            deps.append(d)
+    return deps
+
+def read_needed(l):
+    deps = []
+
+    if '/' not in l:
+        if os.path.exists(os.path.join(options.working_dir, "meta", l + ".libraries")):
+            with open(os.path.join(options.working_dir, "meta", l + ".libraries"), 'r') as f:
+                for d in f.read().splitlines():
+                    deps.append(d)
     else:
-        return {}
+        deps = [n for n in get_needed(l) if not exclude_src(n, LDD_EXCLUDES)]
 
-    return calls
+    return deps 
 
-def check_deps(metas,deps,symbols,calls):
-    stats = {}
-    for d in deps:
-        stats[d] = None
+def produce_runtime_dep():
+    print(options.binary)
+    binary_needed = [n for n in get_needed(options.binary) if not exclude_src(n, LDD_EXCLUDES)]
+    runtime_deps = set(binary_needed)
+    if options.trace is not None:
+        runtime_deps.update(set(read_trace(options.trace)))
+    workset = runtime_deps.copy()
+    analyzed = set()
 
-    for c in calls:
-        if c["indirect"]:
+    while len(workset) > 0:
+        l = workset.pop()
+        if l not in analyzed:
+            more = set(read_needed(l))
+            runtime_deps.update(more)
+            for l2 in more:
+                if l2 not in analyzed:
+                    workset.add(l2)
+            analyzed.add(l)
+
+    runtime_deps2 = set()
+    for l in runtime_deps:
+        tl = trim_libname(l)
+        if not os.path.exists(os.path.join(options.working_dir, "meta", tl + ".libraries")):
+            print("warning: {} not in symbol repository".format(tl))
             continue
-        fname = c["fnptr"][1:]
-        sym = symbols.get(fname)
-        if sym is not None:
-            stats[sym.metas[0].package_name] = sym.libs[0]
+        runtime_deps2.add(tl)            
 
-    return stats
+    with open(options.outfile, "w") as f:
+        f.write("{}\n".format(len(runtime_deps2)))
+        for l in runtime_deps2:
+            f.write("{}\n".format(l))
 
-def dump_deps(stats,outfile):
-        
-    # Just for nice output
-    used = []
-    notused = []
-
-    for d,t in stats.items():
-        if t is not None:
-            used.append({"package_name":d, "shared_lib":t})
-        else:
-            notused.append(d)
-
-    print('Package has ' + str(len(stats)) + ' tracked dependencies')
-    print('Using ' + str(len(used)) + ':')
-    for d in used:
-        print('\t' + d["package_name"] + ' ===> ' + d["shared_lib"])
-
-    print('Not using ' + str(len(notused)) + ':')
-    for d in notused:
-        print('\t' + d)
-
-    if outfile is not None:
-        j = {}
-        j["used"] = used
-        j["notused"] = notused
-
-        with open(outfile, 'w') as f:
-            json.dump(j,f,indent=2)
+def patch_symbols():
+    if not os.path.exists(options.patch):
+        print("{} does not exist".format(options.pathc))
+        return
+    tab = {}
+    with open(options.patch, "r") as f:
+        for line in f.readlines():
+            tok = line.split()
+            sym, lib = tok[0], tok[1]
+            if lib not in tab:
+                tab[lib] = []
+            tab[lib].append(sym)
+    for l,syms in tab.items():
+        symrepo = os.path.join(options.working_dir, "meta", l + ".symbols")
+        if not os.path.exists(symrepo):
+            print("warning: no symbol repository for library {}".format(l))
+            continue
+        with open(symrepo, "a") as sf:
+            for s in syms:
+                sf.write("{} {}\n".format(l, s)) 
 
 usage = "usage: %prog [options] dependency-list"
 parser = OptionParser(usage=usage)
 parser.add_option('-d', '--dir', dest='working_dir', default='symbol-out', help='use DIR as working output directory', metavar='DIR')
-parser.add_option('-t', '--trace', dest='trace', help='load trace file DIR', metavar='TRACE')
-parser.add_option('-o', '--outfile', dest='outfile', default=None, help='dump json data to OUTFILE for post-processing', metavar='OUTFILE')
-parser.add_option('-s', '--src', action='store_true', default=None, help='download source packages from dep file', metavar='SRC')
+parser.add_option('-t', '--trace', dest='trace', default=None, help='supply lztrace file', metavar='LZTRACE-FILE')
+parser.add_option('-b', '--bin', dest='binary', default=None, help='binary used to produce lztrace file', metavar='BINARY')
+parser.add_option('-o', '--outfile', dest='outfile', default="runtime.txt", help='output file for runtime deps', metavar='PATH')
+parser.add_option('-p', '--patch', dest='patch', default=None, help='patch symbols.txt from src repo onto symbol repo', metavar='PATH')
 
 (options, args) = parser.parse_args()
 
-working_dir = options.working_dir
+if options.patch is not None:
+    patch_symbols()
+    sys.exit(0)
+
+if options.binary is not None:
+    produce_runtime_dep()
+    sys.exit(0)
 
 if len(args) < 1:
     print("error: must supply dependency-list")
@@ -327,17 +348,3 @@ load_symbols(metas, libs)
 save_libs(libs)
 save_packages(metas)
 save_symbols(libs)
-
-if options.trace is not None:
-    calls = load_trace(options.trace)
-    stats = check_deps(metas,deps,symbols,calls) 
-    dump_deps(stats, options.outfile)
-   
-
-
-
-
-
-
-
-

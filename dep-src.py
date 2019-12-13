@@ -613,7 +613,7 @@ def check(deps, pkg_name):
                     bi.unerased_libs.append(l) 
         else:
             bi.has_symbols = False
-        bi.did_erase = buildstat[d]
+        bi.did_erase = buildstat[d] if d in buildstat else False
         buildinfos.append(bi)
 
     # Gather some stats 
