@@ -27,7 +27,8 @@ with open("{}/{}".format(options.working_dir, options.tracename), "a") as f:
     if len(used) > 0:
         for d in used:
             f.write(d + sep)
-        f.write("\n")
+        if options.tracename == 'lzload.trace':
+            f.write("\n")
     else:
         if options.tracename == "lzload.trace":
             f.write("nodep\n")
