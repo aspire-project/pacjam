@@ -162,7 +162,8 @@ def build_original(src, env):
     if try_build_dep(src) != 0:
         print("\twarning: issue building dependencies for {}".format(src)) 
 
-    saved_command_db = os.path.join(*[COMPILATION_DB_DIR_PATH, src, "compile_commands.json"])
+    saved_command_db = os.path.join(*lls
+    COMPILATION_DB_DIR_PATH, src, "compile_commands.json"])
     reuse_saved_db = os.path.exists(saved_command_db)
 
     if not reuse_saved_db or options.force:
