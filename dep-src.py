@@ -630,7 +630,7 @@ def check(deps, pkg_name):
             nbinary += 1
             continue
         if not bi.did_erase:
-            nlibrary_failed += 1
+            nlibrary_fail += 1
             continue
         nlibrary_success += 1
 
