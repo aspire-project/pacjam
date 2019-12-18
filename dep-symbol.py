@@ -337,7 +337,7 @@ def produce_runtime_dep(bmap):
 def produce_binary_trace(bmap):
     trace = set(read_trace(options.trace))
 
-    with open("binary.trace", "w") as f:
+    with open("binary.trace", "a") as f:
         for t in trace:
             name = trim_libname(t)
             if name in bmap:
