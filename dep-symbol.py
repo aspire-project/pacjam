@@ -11,9 +11,9 @@ import json
 
 ARCH='x86_64-linux-gnu'
 
-EXCLUDES=["libc6", "libgcc1", "gcc-8-base", "<debconf-2.0>", "debconf"]
+EXCLUDES=["libgcc1", "gcc-8-base", "<debconf-2.0>", "debconf"]
 
-LDD_EXCLUDES=["libc.so.6", "ld-linux-x86-64.so.2", "libdl.so.2", "libpthread.so.0"]
+LDD_EXCLUDES=["ld-linux-x86-64.so.2", "libdl.so.2", "libpthread.so.0"]
 
 options = {}
 
@@ -41,15 +41,20 @@ class Lib:
         self.symbols.append(symbol)
 
 class Meta:
-    def __init__(self,package_name,package_deb,has_symbols,shared_libs):
+    def __init__(self,package_name,package_deb,has_symbols,shared_libs, binaries):
         self.package_name = package_name
         self.package_deb = package_deb
         self.has_symbols = has_symbols
         self.shared_libs = shared_libs
+        self.binaries = binaries
 
     def add_lib(self, lib):
         if lib not in self.shared_libs:
             self.shared_libs.append(lib)
+
+    def add_binary(self, bin):
+        if bin not in self.binaries:
+            self.binaries.append(bin)
 
 def read_dependency_list(name):
     deps = {}
@@ -119,6 +124,7 @@ def gather_libs(path):
         libs.append(l.decode('utf-8'))
     return libs
 
+# This assumes we are in the current directory for an extracted debian package
 def read_so(meta, libs):
     for l in meta.raw_libs:
         soname = soname_lib(l)
@@ -127,6 +133,21 @@ def read_so(meta, libs):
         needed = [n for n in get_needed(l) if not exclude_src(n, LDD_EXCLUDES)]
         libs[soname] = Lib(soname, needed) 
 
+# This assumes we are in the current directory for an extracted debian package
+def read_binary(meta):
+    bindirs = ["bin", "sbin", "usr/bin", "usr/sbin"]
+
+    binaries = set()
+
+    for b in bindirs:
+        for (dirpath, dirnames, filenames) in os.walk(os.path.join("tmp",b)):
+            for f in filenames:
+                binaries.add(trim_libname(f))
+
+    for b in binaries:
+        meta.add_binary(b)
+
+# This assumes we are in the current directory for an extracted debian package
 def build_symbols(meta):
     added = set()
     with open("symbols", "w") as f:
@@ -149,7 +170,6 @@ def build_symbols(meta):
         except subprocess.CalledProcessError as err:
             print(err)
             print('failed to build symbols file for ' + meta.package_deb)
-    
 
 def extract_debs(debs):
     # Create some metadata about our little repository
@@ -178,10 +198,11 @@ def extract_debs(debs):
         # Test for symbol file
         if (os.path.exists('symbols')):
             os.remove('symbols')
-        meta = Meta(dep, deb, False, [])
+        meta = Meta(dep, deb, False, [], [])
         build_symbols(meta)
 
         read_so(meta, libs)
+        read_binary(meta)
 
         metas[deb] = meta
 
@@ -213,6 +234,12 @@ def save_packages(meta):
     with open(os.path.join(options.working_dir,'packages.txt'), 'w') as f:
         for k,m in metas.items():
             for l in m.shared_libs:
+                f.write("{} {}\n".format(l, m.package_name)) 
+
+def save_binaries(meta):
+    with open(os.path.join(options.working_dir,'binaries.txt'), 'w') as f:
+        for k,m in metas.items():
+            for l in m.binaries:
                 f.write("{} {}\n".format(l, m.package_name)) 
 
 def save_libs(libs):
@@ -264,7 +291,18 @@ def read_needed(l):
 
     return deps 
 
-def produce_runtime_dep():
+def read_binaries(path):
+    bmap = {}
+    with open(path, 'r') as f:
+        for l in f.read().splitlines():
+            toks = l.split()
+            package = toks[1]
+            bin = toks[0]
+            bmap[bin] = package
+    return bmap
+
+
+def produce_runtime_dep(bmap):
     print(options.binary)
     binary_needed = [n for n in get_needed(options.binary) if not exclude_src(n, LDD_EXCLUDES)]
     runtime_deps = set(binary_needed)
@@ -286,7 +324,7 @@ def produce_runtime_dep():
     runtime_deps2 = set()
     for l in runtime_deps:
         tl = trim_libname(l)
-        if not os.path.exists(os.path.join(options.working_dir, "meta", tl + ".libraries")):
+        if not os.path.exists(os.path.join(options.working_dir, "meta", tl + ".libraries")) and tl not in bmap:
             print("warning: {} not in symbol repository".format(tl))
             continue
         runtime_deps2.add(tl)            
@@ -295,6 +333,16 @@ def produce_runtime_dep():
         f.write("{}\n".format(len(runtime_deps2)))
         for l in runtime_deps2:
             f.write("{}\n".format(l))
+
+def produce_binary_trace(bmap):
+    trace = set(read_trace(options.trace))
+
+    with open("binary.trace", "w") as f:
+        for t in trace:
+            name = trim_libname(t)
+            if name in bmap:
+                f.write(name + " ")
+        f.write("\n") 
 
 def patch_symbols():
     if not os.path.exists(options.patch):
@@ -332,7 +380,10 @@ if options.patch is not None:
     sys.exit(0)
 
 if options.binary is not None:
-    produce_runtime_dep()
+    bmap = read_binaries(os.path.join(options.working_dir, "binaries.txt"))
+
+    produce_runtime_dep(bmap)
+    produce_binary_trace(bmap)
     sys.exit(0)
 
 if len(args) < 1:
@@ -345,6 +396,8 @@ debs=download_deps(deps)
 metas, libs = extract_debs(debs)
 
 load_symbols(metas, libs)
+
 save_libs(libs)
 save_packages(metas)
+save_binaries(metas)
 save_symbols(libs)

@@ -1,1 +1,5 @@
-libtext-charwidth-perl
+uuid-runtime
+passwd
+dpkg
+apt
+tar
