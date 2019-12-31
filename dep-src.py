@@ -676,7 +676,8 @@ def check(deps, pkg_name):
 
     nupper_bound = len([b for b in buildinfos if b.reachable()])
     nobservable = len([b for b in buildinfos if b.observable()])
-    nmisc = len([b for b in buildinfos if b.is_misc])
+    nobservable_libs = len([b for b in buildinfos if b.observable() and b.is_library])
+    nmisc = len([b for b in buildinfos if b.is_misc and not b.is_missing])
     nmissing = len([b for b in buildinfos if b.is_missing])
 
     print()
@@ -688,6 +689,7 @@ def check(deps, pkg_name):
     print("Packages without libraries or binaries {}".format(nmisc))
     print("Missing packages {}".format(nmissing))
     print("Observable packages {}".format(nobservable))
+    print("Observable libraries {}".format(nobservable_libs))
     print("=========================================================")
 
 
