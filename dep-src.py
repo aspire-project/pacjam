@@ -578,94 +578,140 @@ class BuildInfo:
         self.package = package
         self.erased_libs = []
         self.unerased_libs = []
-        self.is_binary = False
+
+        self.is_binary = False 
+        self.is_library = False 
+        self.is_misc = True
+
         self.has_symbols = False
-        self.did_erase = False
+        self.is_missing = False
+        self.excluded_build = False
+
+    def reachable(self):
+        return self.is_binary or self.is_library
+
+    def observable(self):
+        return self.is_binary or (self.is_library and len(self.erased_libs) > 0)
+
+    def erased(self):
+        return len(self.erased_libs) > 0
+
+    def type(self):
+        if self.is_library:
+            return "library"
+        elif self.is_binary:
+            return "binary"
+        elif self.is_misc:
+            return "misc"
+        elif self.is_missing:
+            return "missing"
+        else:
+            return "unknown"
+
+def read_binary_list(path):
+    bmap = {}
+    with open(path, 'r') as f:
+        for l in f.read().splitlines():
+            toks = l.split()
+            package = toks[1]
+            bin = toks[0]
+            if package not in bmap:
+                bmap[package] = []
+            bmap[package].append(bin)
+    return bmap
+
+def read_extra_list(path):
+    bmap = {}
+    with open(path, 'r') as f:
+        for l in f.read().splitlines():
+            toks = l.split()
+            package = toks[0]
+            ex = toks[1]
+            bmap[package] = ex
+    return bmap 
 
 def check(deps, pkg_name):
     packages = read_package_list(os.path.join(options.check, "packages.txt"))
+    binaries = read_binary_list(os.path.join(options.check, "binaries.txt"))
+    extra = read_extra_list(os.path.join(options.check, "extra.txt"))
+
     buildstat = read_build_stat(os.path.join(options.working_dir, pkg_name + '.stat'))
-
     libhome = os.path.join(options.working_dir, "lib")
-
-    naccidental_excluded = 0
-    for d in deps:
-        if exclude_src(d, EXCLUDES) and not exclude_src_fix(d, EXCLUDES):
-            naccidental_excluded += 1
-            print("[ACCIDENTAL]: package {} was accidently excluded".format(d)) 
-
     buildinfos = []
-
-    nexcluded = 0
+    
     for d in deps:
-        if exclude_src(d, EXCLUDES):
-            nexcluded += 1
-            continue
         bi = BuildInfo(d)
-        bi.is_binary = (len(gather_libs(os.path.join(options.check, d))) == 0)
+
+        if exclude_src(d, EXCLUDES):
+            bi.excluded_build = True
+
+        if not os.path.exists(os.path.join(options.check, d)):
+            bi.is_missing = True
+
         if d in packages:
-            bi.has_symbols = True
+            bi.is_library = True
+            bi.is_misc = False
+
             for l in packages[d]:
                 path = os.path.join(libhome, l)
                 if os.path.exists(path) and check_elf(path, LZLOAD_SYMBOL):
                     bi.erased_libs.append(l)
                 else:
                     bi.unerased_libs.append(l) 
-        else:
-            bi.has_symbols = False
-        bi.did_erase = buildstat[d] if d in buildstat else False
+
+        if d in binaries:
+            bi.is_binary = True
+            bi.is_misc = False
+
         buildinfos.append(bi)
 
+    #for b in buildinfos:
+    #    if not b.reachable():
+    #        print("[UNOBSERVABLE]: {} used for {}".format(d, extra[d]))
+    #    else:
+    #        print("[UNOBSERVABLE]: {} does not have binary or library".format(d))
+
+
     # Gather some stats 
-    nbinary = 0
-    nlibrary_success = 0
-    nlibrary_fail = 0
 
-    nlibrary_erased = 0
-    nwithunerased_libs = 0
-    nmissing_sym = 0
-    for bi in buildinfos:        
-        if bi.is_binary:
-            nbinary += 1
-            continue
-        if not bi.did_erase:
-            nlibrary_fail += 1
-            continue
-        nlibrary_success += 1
+    nupper_bound = len([b for b in buildinfos if b.reachable()])
+    nobservable = len([b for b in buildinfos if b.observable()])
+    nmisc = len([b for b in buildinfos if b.is_misc])
+    nmissing = len([b for b in buildinfos if b.is_missing])
 
-        if len(bi.erased_libs) > 0:
-            nlibrary_erased += 1
-        else:
-            print("[NO LIBRARIES]: {} has no erased libraries".format(bi.package))
-
-        if len(bi.unerased_libs) > 0:
-            nwithunerased_libs += 1
-            for l in bi.unerased_libs:
-                print("[UNERASED LIBRARIES]: library {} from package {} not erased".format(l, bi.package))
-
-        if not bi.has_symbols:
-            nmissing_sym += 1
-            print("[MISSING SYMBOLS]: package {} does not have any symbols".format(bi.package))
-   
- 
     print()
+    print("=========================================================")
     print("Total dependencies: {}".format(len(deps)))
-    print("Non-excluded dependencies: {}".format(len(buildinfos)))
-    print()
+    print("Packages with libraries {}".format(len(packages)))
+    print("Packages with binaries {}".format(len(binaries))) 
+    print("Reachable packages (upper bound) {}".format(nupper_bound))
+    print("Packages without libraries or binaries {}".format(nmisc))
+    print("Missing packages {}".format(nmissing))
+    print("Observable packages {}".format(nobservable))
+    print("=========================================================")
+
+
+    with open("details.csv", "w") as f:
+        f.write("package,type,reachable,observable,erased,excluded,unerased\n")
+
+        for bi in buildinfos:        
+            f.write("{},{},{},{},{},{},{}\n".format(bi.package, bi.type(), bi.reachable(), bi.observable(), bi.erased(), bi.excluded_build, len(bi.unerased_libs))), 
+
+            if bi.reachable() and not bi.observable():
+                print("[UNOBSERVABLE]: {} unobservable: ".format(bi.package), end="")
+                if bi.excluded_build:
+                    print("excluded from build")
+                elif bi.is_library and not bi.erased():
+                    print("no erased libraries")
+
+            if len(bi.unerased_libs) > 0:
+                for l in bi.unerased_libs:
+                    print("[UNERASED LIBRARIES]: library {} from package {} not erased".format(l, bi.package))
+
+    print("=========================================================")
+    print("dumped full details on all dependencies to details.csv")
     
-    print("Total possible excludes: {}".format(len(EXCLUDES)))
-    print("Excluded dependencies: {}".format(nexcluded))
-    print("Accidental excludes: {}".format(naccidental_excluded))
     print()
-
-    print("Binary builds: {}".format(nbinary))
-    print("Reported succesful library builds: {}".format(nlibrary_success))
-    print("Reported failing library builds: {}".format(nlibrary_fail))
-    print()
-
-    print("Library builds with erased: {}".format(nlibrary_erased))
-    print("Builds with unerased libraries (non-binary): {}".format(nwithunerased_libs))
-    print("Builds missing symbols (non-binary): {}".format(nmissing_sym))
                 
 usage = "usage: %prog [options] dependency-list"
 parser = OptionParser(usage=usage)

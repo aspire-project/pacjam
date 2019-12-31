@@ -47,6 +47,9 @@ class Meta:
         self.has_symbols = has_symbols
         self.shared_libs = shared_libs
         self.binaries = binaries
+        self.has_locale = False
+        self.has_perlmodules = False
+        self.has_man = False
 
     def add_lib(self, lib):
         if lib not in self.shared_libs:
@@ -124,6 +127,28 @@ def gather_libs(path):
         libs.append(l.decode('utf-8'))
     return libs
 
+def gather_bins(path):
+    out = subprocess.run(['find',path, '-perm', '-111', '-type', 'f'], stdout=subprocess.PIPE)
+    bins = []
+    for b in out.stdout.splitlines():
+        bins.append(b.decode('utf-8'))
+    return bins 
+
+def has_perl(path):
+    out = subprocess.run(['find',path, '-name', '*.pm'], stdout=subprocess.PIPE)
+    libs = []
+    return len(out.stdout.splitlines()) > 0
+
+def has_locale(path):
+    out = subprocess.run(['find',path, '-name', '*.mo'], stdout=subprocess.PIPE)
+    libs = []
+    return len(out.stdout.splitlines()) > 0 
+
+def has_man(path):
+    out = subprocess.run(['find',path, '-name', '*man*'], stdout=subprocess.PIPE)
+    libs = []
+    return len(out.stdout.splitlines()) > 0 
+
 # This assumes we are in the current directory for an extracted debian package
 def read_so(meta, libs):
     for l in meta.raw_libs:
@@ -143,6 +168,18 @@ def read_binary(meta):
         for (dirpath, dirnames, filenames) in os.walk(os.path.join("tmp",b)):
             for f in filenames:
                 binaries.add(trim_libname(f))
+
+    if len(binaries) == 0:
+        # Sanity check
+        findbins = gather_bins("tmp")
+        if len(findbins) > 0:
+            print("warning: find found executable files while manual search did not for package {}".format(meta.package_name))
+            print(findbins)
+
+        # For debugging  
+        meta.has_perlmodules = has_perl("tmp")
+        meta.has_locale = has_locale("tmp")
+        meta.has_man = has_man("tmp")
 
     for b in binaries:
         meta.add_binary(b)
@@ -241,6 +278,21 @@ def save_binaries(meta):
         for k,m in metas.items():
             for l in m.binaries:
                 f.write("{} {}\n".format(l, m.package_name)) 
+
+def save_extra(meta):
+    with open(os.path.join(options.working_dir,'extra.txt'), 'w') as f:
+        for k,m in metas.items():
+            if len(m.shared_libs) > 0 or len(m.binaries) > 0:
+                continue
+            if m.has_perlmodules:
+                f.write("{} {}\n".format(m.package_name, "perl-module"))
+                continue
+            if m.has_locale:
+                f.write("{} {}\n".format(m.package_name, "locale"))
+                continue 
+            if m.has_man:
+                f.write("{} {}\n".format(m.package_name, "man"))
+                continue 
 
 def save_libs(libs):
     meta_dir = os.path.join(options.working_dir, "meta")
@@ -400,4 +452,5 @@ load_symbols(metas, libs)
 save_libs(libs)
 save_packages(metas)
 save_binaries(metas)
+save_extra(metas)
 save_symbols(libs)
