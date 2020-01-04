@@ -1,0 +1,87 @@
+[
+    {
+        "arguments": [
+            "gcc", 
+            "-c", 
+            "-D_FORTIFY_SOURCE=2", 
+            "-D_FORTIFY_SOURCE=2", 
+            "-D_GNU_SOURCE", 
+            "-Wall", 
+            "-W", 
+            "-pipe", 
+            "-g", 
+            "-O2", 
+            "-fstack-protector-strong", 
+            "-Wformat", 
+            "-Werror=format-security", 
+            "-DVERSION=\"0.59\"", 
+            "proc.c"
+        ], 
+        "directory": "/home/aspire/src-out/startpar.original/startpar-0.59", 
+        "file": "proc.c"
+    }, 
+    {
+        "arguments": [
+            "gcc", 
+            "-c", 
+            "-D_GNU_SOURCE", 
+            "-Wall", 
+            "-W", 
+            "-pipe", 
+            "-g", 
+            "-O2", 
+            "-fstack-protector-strong", 
+            "-Wformat", 
+            "-Werror=format-security", 
+            "-D_FORTIFY_SOURCE=2", 
+            "-D_FORTIFY_SOURCE=2", 
+            "-o", 
+            "startpar-upstart-inject", 
+            "startpar-upstart-inject.c"
+        ], 
+        "directory": "/home/aspire/src-out/startpar.original/startpar-0.59", 
+        "file": "startpar-upstart-inject.c"
+    }, 
+    {
+        "arguments": [
+            "gcc", 
+            "-c", 
+            "-D_FORTIFY_SOURCE=2", 
+            "-D_FORTIFY_SOURCE=2", 
+            "-D_GNU_SOURCE", 
+            "-Wall", 
+            "-W", 
+            "-pipe", 
+            "-g", 
+            "-O2", 
+            "-fstack-protector-strong", 
+            "-Wformat", 
+            "-Werror=format-security", 
+            "-DVERSION=\"0.59\"", 
+            "startpar.c"
+        ], 
+        "directory": "/home/aspire/src-out/startpar.original/startpar-0.59", 
+        "file": "startpar.c"
+    }, 
+    {
+        "arguments": [
+            "gcc", 
+            "-c", 
+            "-D_FORTIFY_SOURCE=2", 
+            "-D_FORTIFY_SOURCE=2", 
+            "-D_GNU_SOURCE", 
+            "-Wall", 
+            "-W", 
+            "-pipe", 
+            "-g", 
+            "-O2", 
+            "-fstack-protector-strong", 
+            "-Wformat", 
+            "-Werror=format-security", 
+            "-DVERSION=\"0.59\"", 
+            "makeboot.c"
+        ], 
+        "directory": "/home/aspire/src-out/startpar.original/startpar-0.59", 
+        "file": "makeboot.c"
+    }
+]

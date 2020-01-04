@@ -1,0 +1,50 @@
+[
+    {
+        "arguments": [
+            "gcc", 
+            "-c", 
+            "-W", 
+            "-Wall", 
+            "-g", 
+            "-O2", 
+            "-fstack-protector-strong", 
+            "-Wformat", 
+            "-Werror=format-security", 
+            "-D_FORTIFY_SOURCE=2", 
+            "-D_GNU_SOURCE", 
+            "-D_FILE_OFFSET_BITS=64", 
+            "-DNOTSUSE", 
+            "-DINITDIR=\"/etc/init.d\"", 
+            "-DINSCONF=\"/etc/insserv.conf\"", 
+            "-pipe", 
+            "-falign-loops=0", 
+            "insserv.c"
+        ], 
+        "directory": "/home/aspire/src-out/insserv.original/insserv-1.14.0", 
+        "file": "insserv.c"
+    }, 
+    {
+        "arguments": [
+            "gcc", 
+            "-c", 
+            "-W", 
+            "-Wall", 
+            "-g", 
+            "-O2", 
+            "-fstack-protector-strong", 
+            "-Wformat", 
+            "-Werror=format-security", 
+            "-D_FORTIFY_SOURCE=2", 
+            "-D_GNU_SOURCE", 
+            "-D_FILE_OFFSET_BITS=64", 
+            "-DNOTSUSE", 
+            "-DINITDIR=\"/etc/init.d\"", 
+            "-DINSCONF=\"/etc/insserv.conf\"", 
+            "-pipe", 
+            "-falign-loops=0", 
+            "listing.c"
+        ], 
+        "directory": "/home/aspire/src-out/insserv.original/insserv-1.14.0", 
+        "file": "listing.c"
+    }
+]

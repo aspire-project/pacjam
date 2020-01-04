@@ -1,0 +1,341 @@
+[
+    {
+        "arguments": [
+            "cc", 
+            "-c", 
+            "-g", 
+            "-O2", 
+            "-fstack-protector-strong", 
+            "-Wformat", 
+            "-Werror=format-security", 
+            "-D_FORTIFY_SOURCE=2", 
+            "-W", 
+            "-Wall", 
+            "-D_GNU_SOURCE", 
+            "-DACCTON_OFF", 
+            "-DINIT_MAIN", 
+            "-o", 
+            "init_utmp.o", 
+            "utmp.c"
+        ], 
+        "directory": "/home/aspire/src-out/sysv-rc.original/sysvinit-2.88dsf/src", 
+        "file": "utmp.c"
+    }, 
+    {
+        "arguments": [
+            "cc", 
+            "-c", 
+            "-g", 
+            "-O2", 
+            "-fstack-protector-strong", 
+            "-Wformat", 
+            "-Werror=format-security", 
+            "-D_FORTIFY_SOURCE=2", 
+            "-W", 
+            "-Wall", 
+            "-D_GNU_SOURCE", 
+            "-DACCTON_OFF", 
+            "-o", 
+            "dowall.o", 
+            "dowall.c"
+        ], 
+        "directory": "/home/aspire/src-out/sysv-rc.original/sysvinit-2.88dsf/src", 
+        "file": "dowall.c"
+    }, 
+    {
+        "arguments": [
+            "cc", 
+            "-c", 
+            "-g", 
+            "-O2", 
+            "-fstack-protector-strong", 
+            "-Wformat", 
+            "-Werror=format-security", 
+            "-D_FORTIFY_SOURCE=2", 
+            "-W", 
+            "-Wall", 
+            "-D_GNU_SOURCE", 
+            "-DACCTON_OFF", 
+            "-o", 
+            "shutdown.o", 
+            "shutdown.c"
+        ], 
+        "directory": "/home/aspire/src-out/sysv-rc.original/sysvinit-2.88dsf/src", 
+        "file": "shutdown.c"
+    }, 
+    {
+        "arguments": [
+            "cc", 
+            "-c", 
+            "-g", 
+            "-O2", 
+            "-fstack-protector-strong", 
+            "-Wformat", 
+            "-Werror=format-security", 
+            "-D_FORTIFY_SOURCE=2", 
+            "-W", 
+            "-Wall", 
+            "-D_GNU_SOURCE", 
+            "-DACCTON_OFF", 
+            "-DWITH_SELINUX", 
+            "-o", 
+            "init.o", 
+            "init.c"
+        ], 
+        "directory": "/home/aspire/src-out/sysv-rc.original/sysvinit-2.88dsf/src", 
+        "file": "init.c"
+    }, 
+    {
+        "arguments": [
+            "cc", 
+            "-c", 
+            "-g", 
+            "-O2", 
+            "-fstack-protector-strong", 
+            "-Wformat", 
+            "-Werror=format-security", 
+            "-D_FORTIFY_SOURCE=2", 
+            "-W", 
+            "-Wall", 
+            "-D_GNU_SOURCE", 
+            "-DACCTON_OFF", 
+            "-o", 
+            "killall5", 
+            "killall5.c"
+        ], 
+        "directory": "/home/aspire/src-out/sysv-rc.original/sysvinit-2.88dsf/src", 
+        "file": "killall5.c"
+    }, 
+    {
+        "arguments": [
+            "cc", 
+            "-c", 
+            "-g", 
+            "-O2", 
+            "-fstack-protector-strong", 
+            "-Wformat", 
+            "-Werror=format-security", 
+            "-D_FORTIFY_SOURCE=2", 
+            "-W", 
+            "-Wall", 
+            "-D_GNU_SOURCE", 
+            "-DACCTON_OFF", 
+            "-o", 
+            "mesg.o", 
+            "mesg.c"
+        ], 
+        "directory": "/home/aspire/src-out/sysv-rc.original/sysvinit-2.88dsf/src", 
+        "file": "mesg.c"
+    }, 
+    {
+        "arguments": [
+            "cc", 
+            "-c", 
+            "-g", 
+            "-O2", 
+            "-fstack-protector-strong", 
+            "-Wformat", 
+            "-Werror=format-security", 
+            "-D_FORTIFY_SOURCE=2", 
+            "-W", 
+            "-Wall", 
+            "-D_GNU_SOURCE", 
+            "-DACCTON_OFF", 
+            "-o", 
+            "fstab-decode", 
+            "fstab-decode.c"
+        ], 
+        "directory": "/home/aspire/src-out/sysv-rc.original/sysvinit-2.88dsf/src", 
+        "file": "fstab-decode.c"
+    }, 
+    {
+        "arguments": [
+            "cc", 
+            "-c", 
+            "-g", 
+            "-O2", 
+            "-fstack-protector-strong", 
+            "-Wformat", 
+            "-Werror=format-security", 
+            "-D_FORTIFY_SOURCE=2", 
+            "-W", 
+            "-Wall", 
+            "-D_GNU_SOURCE", 
+            "-DACCTON_OFF", 
+            "-o", 
+            "last.o", 
+            "last.c"
+        ], 
+        "directory": "/home/aspire/src-out/sysv-rc.original/sysvinit-2.88dsf/src", 
+        "file": "last.c"
+    }, 
+    {
+        "arguments": [
+            "cc", 
+            "-c", 
+            "-g", 
+            "-O2", 
+            "-fstack-protector-strong", 
+            "-Wformat", 
+            "-Werror=format-security", 
+            "-D_FORTIFY_SOURCE=2", 
+            "-W", 
+            "-Wall", 
+            "-D_GNU_SOURCE", 
+            "-DACCTON_OFF", 
+            "-o", 
+            "bootlogd.o", 
+            "bootlogd.c"
+        ], 
+        "directory": "/home/aspire/src-out/sysv-rc.original/sysvinit-2.88dsf/src", 
+        "file": "bootlogd.c"
+    }, 
+    {
+        "arguments": [
+            "cc", 
+            "-c", 
+            "-g", 
+            "-O2", 
+            "-fstack-protector-strong", 
+            "-Wformat", 
+            "-Werror=format-security", 
+            "-D_FORTIFY_SOURCE=2", 
+            "-W", 
+            "-Wall", 
+            "-D_GNU_SOURCE", 
+            "-DACCTON_OFF", 
+            "-o", 
+            "halt.o", 
+            "halt.c"
+        ], 
+        "directory": "/home/aspire/src-out/sysv-rc.original/sysvinit-2.88dsf/src", 
+        "file": "halt.c"
+    }, 
+    {
+        "arguments": [
+            "cc", 
+            "-c", 
+            "-g", 
+            "-O2", 
+            "-fstack-protector-strong", 
+            "-Wformat", 
+            "-Werror=format-security", 
+            "-D_FORTIFY_SOURCE=2", 
+            "-W", 
+            "-Wall", 
+            "-D_GNU_SOURCE", 
+            "-DACCTON_OFF", 
+            "-o", 
+            "runlevel.o", 
+            "runlevel.c"
+        ], 
+        "directory": "/home/aspire/src-out/sysv-rc.original/sysvinit-2.88dsf/src", 
+        "file": "runlevel.c"
+    }, 
+    {
+        "arguments": [
+            "cc", 
+            "-c", 
+            "-g", 
+            "-O2", 
+            "-fstack-protector-strong", 
+            "-Wformat", 
+            "-Werror=format-security", 
+            "-D_FORTIFY_SOURCE=2", 
+            "-W", 
+            "-Wall", 
+            "-D_GNU_SOURCE", 
+            "-DACCTON_OFF", 
+            "-o", 
+            "mountpoint.o", 
+            "mountpoint.c"
+        ], 
+        "directory": "/home/aspire/src-out/sysv-rc.original/sysvinit-2.88dsf/src", 
+        "file": "mountpoint.c"
+    }, 
+    {
+        "arguments": [
+            "cc", 
+            "-c", 
+            "-g", 
+            "-O2", 
+            "-fstack-protector-strong", 
+            "-Wformat", 
+            "-Werror=format-security", 
+            "-D_FORTIFY_SOURCE=2", 
+            "-W", 
+            "-Wall", 
+            "-D_GNU_SOURCE", 
+            "-DACCTON_OFF", 
+            "-o", 
+            "ifdown.o", 
+            "ifdown.c"
+        ], 
+        "directory": "/home/aspire/src-out/sysv-rc.original/sysvinit-2.88dsf/src", 
+        "file": "ifdown.c"
+    }, 
+    {
+        "arguments": [
+            "cc", 
+            "-c", 
+            "-g", 
+            "-O2", 
+            "-fstack-protector-strong", 
+            "-Wformat", 
+            "-Werror=format-security", 
+            "-D_FORTIFY_SOURCE=2", 
+            "-W", 
+            "-Wall", 
+            "-D_GNU_SOURCE", 
+            "-DACCTON_OFF", 
+            "-o", 
+            "hddown.o", 
+            "hddown.c"
+        ], 
+        "directory": "/home/aspire/src-out/sysv-rc.original/sysvinit-2.88dsf/src", 
+        "file": "hddown.c"
+    }, 
+    {
+        "arguments": [
+            "cc", 
+            "-c", 
+            "-g", 
+            "-O2", 
+            "-fstack-protector-strong", 
+            "-Wformat", 
+            "-Werror=format-security", 
+            "-D_FORTIFY_SOURCE=2", 
+            "-W", 
+            "-Wall", 
+            "-D_GNU_SOURCE", 
+            "-DACCTON_OFF", 
+            "-DWITH_SELINUX", 
+            "-o", 
+            "sulogin.o", 
+            "sulogin.c"
+        ], 
+        "directory": "/home/aspire/src-out/sysv-rc.original/sysvinit-2.88dsf/src", 
+        "file": "sulogin.c"
+    }, 
+    {
+        "arguments": [
+            "cc", 
+            "-c", 
+            "-g", 
+            "-O2", 
+            "-fstack-protector-strong", 
+            "-Wformat", 
+            "-Werror=format-security", 
+            "-D_FORTIFY_SOURCE=2", 
+            "-W", 
+            "-Wall", 
+            "-D_GNU_SOURCE", 
+            "-DACCTON_OFF", 
+            "-o", 
+            "utmp.o", 
+            "utmp.c"
+        ], 
+        "directory": "/home/aspire/src-out/sysv-rc.original/sysvinit-2.88dsf/src", 
+        "file": "utmp.c"
+    }
+]

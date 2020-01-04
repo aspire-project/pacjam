@@ -1,0 +1,107 @@
+[
+    {
+        "arguments": [
+            "x86_64-linux-gnu-gcc", 
+            "-c", 
+            "-Wall", 
+            "-W", 
+            "-g", 
+            "-O2", 
+            "-fstack-protector-strong", 
+            "-Wformat", 
+            "-Werror=format-security", 
+            "-D_FORTIFY_SOURCE=2", 
+            "-DIFUPDOWN_VERSION=\"0.7.53.1\"", 
+            "-D_FORTIFY_SOURCE=2", 
+            "-o", 
+            "archlinux.o", 
+            "archlinux.c"
+        ], 
+        "directory": "/home/aspire/src-out/ifupdown.original/ifupdown-0.7.53.1", 
+        "file": "archlinux.c"
+    }, 
+    {
+        "arguments": [
+            "x86_64-linux-gnu-gcc", 
+            "-c", 
+            "-Wall", 
+            "-W", 
+            "-g", 
+            "-O2", 
+            "-fstack-protector-strong", 
+            "-Wformat", 
+            "-Werror=format-security", 
+            "-D_FORTIFY_SOURCE=2", 
+            "-DIFUPDOWN_VERSION=\"0.7.53.1\"", 
+            "-D_FORTIFY_SOURCE=2", 
+            "-o", 
+            "execute.o", 
+            "execute.c"
+        ], 
+        "directory": "/home/aspire/src-out/ifupdown.original/ifupdown-0.7.53.1", 
+        "file": "execute.c"
+    }, 
+    {
+        "arguments": [
+            "x86_64-linux-gnu-gcc", 
+            "-c", 
+            "-Wall", 
+            "-W", 
+            "-g", 
+            "-O2", 
+            "-fstack-protector-strong", 
+            "-Wformat", 
+            "-Werror=format-security", 
+            "-D_FORTIFY_SOURCE=2", 
+            "-DIFUPDOWN_VERSION=\"0.7.53.1\"", 
+            "-D_FORTIFY_SOURCE=2", 
+            "-o", 
+            "addrfam.o", 
+            "addrfam.c"
+        ], 
+        "directory": "/home/aspire/src-out/ifupdown.original/ifupdown-0.7.53.1", 
+        "file": "addrfam.c"
+    }, 
+    {
+        "arguments": [
+            "x86_64-linux-gnu-gcc", 
+            "-c", 
+            "-Wall", 
+            "-W", 
+            "-g", 
+            "-O2", 
+            "-fstack-protector-strong", 
+            "-Wformat", 
+            "-Werror=format-security", 
+            "-D_FORTIFY_SOURCE=2", 
+            "-DIFUPDOWN_VERSION=\"0.7.53.1\"", 
+            "-D_FORTIFY_SOURCE=2", 
+            "-o", 
+            "main.o", 
+            "main.c"
+        ], 
+        "directory": "/home/aspire/src-out/ifupdown.original/ifupdown-0.7.53.1", 
+        "file": "main.c"
+    }, 
+    {
+        "arguments": [
+            "x86_64-linux-gnu-gcc", 
+            "-c", 
+            "-Wall", 
+            "-W", 
+            "-g", 
+            "-O2", 
+            "-fstack-protector-strong", 
+            "-Wformat", 
+            "-Werror=format-security", 
+            "-D_FORTIFY_SOURCE=2", 
+            "-DIFUPDOWN_VERSION=\"0.7.53.1\"", 
+            "-D_FORTIFY_SOURCE=2", 
+            "-o", 
+            "config.o", 
+            "config.c"
+        ], 
+        "directory": "/home/aspire/src-out/ifupdown.original/ifupdown-0.7.53.1", 
+        "file": "config.c"
+    }
+]
