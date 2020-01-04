@@ -85,8 +85,8 @@ def fetch(deps: dict, distro: str, category: str, arch: str) -> dict:
 
                 current_package = tokens[1].strip()
                 if current_package in deps:
-                    log.error(f'Duplicated package name: {current_package}')
-                    sys.exit(-1)
+                    log.warning(f'Duplicated package name: {current_package}')
+                    #sys.exit(-1)
 
                 deps[current_package] = []
             elif category in ['Depends:', 'Recommends:', 'Pre-Depends:']:
