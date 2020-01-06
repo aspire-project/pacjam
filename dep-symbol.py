@@ -423,7 +423,7 @@ def produce_dlopen_trace():
                 continue
             name = trim_libname(t)
             if name in lib_to_pack:
-                used.add(name)
+                used.add(lib_to_pack[name])
             else:
                 print("warning: no mapping for {}:{} in packages.txt".format(name, t)) 
             f.write(t + " ")
