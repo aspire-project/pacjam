@@ -77,6 +77,9 @@ def soname_lib(libpath):
 def trim_libname(libpath):
     return libpath.split("/")[-1]
 
+def is_libname(libpath):
+    return ".so" in libpath
+
 def get_soname(path):
     objdump = subprocess.Popen(['objdump', '-p', path], stdout=subprocess.PIPE)
     out = subprocess.run(['grep','SONAME'], stdout=subprocess.PIPE, stdin=objdump.stdout)
@@ -377,7 +380,7 @@ def produce_runtime_dep(bmap):
     for l in runtime_deps:
         tl = trim_libname(l)
         if not os.path.exists(os.path.join(options.working_dir, "meta", tl + ".libraries")) and tl not in bmap:
-            print("warning: {} not in symbol repository".format(tl))
+            print("warning: {}:{} not in symbol repository".format(tl, l))
             continue
         runtime_deps2.add(tl)            
 
@@ -385,6 +388,16 @@ def produce_runtime_dep(bmap):
         f.write("{}\n".format(len(runtime_deps2)))
         for l in runtime_deps2:
             f.write("{}\n".format(l))
+
+def read_package_list(package_file):
+    libs = {}
+    with open(package_file, 'r') as f:
+        for d in f.read().splitlines():
+            toks = d.split()
+            lib = toks[0]
+            package = toks[1]
+            libs[lib] = package
+    return libs 
 
 def produce_binary_trace(bmap):
     trace = set(read_trace(options.trace))
@@ -395,6 +408,31 @@ def produce_binary_trace(bmap):
             if name in bmap:
                 f.write(name + " ")
         f.write("\n") 
+
+def is_path(pathname):
+    return "/" in pathname
+
+def produce_dlopen_trace():
+    trace = set(read_trace(options.trace))
+    lib_to_pack = read_package_list(os.path.join(options.working_dir, "packages.txt"))
+
+    used = set()
+    with open("dlopen.library.trace", "a") as f:
+        for t in trace:
+            if not is_libname(t) or not is_path(t):
+                continue
+            name = trim_libname(t)
+            if name in lib_to_pack:
+                used.add(name)
+            else:
+                print("warning: no mapping for {}:{} in packages.txt".format(name, t)) 
+            f.write(t + " ")
+        f.write("\n")
+
+    with open("dlopen.package.trace", "a") as f:
+        for p in used:
+            f.write(p + " ")
+        f.write("\n")        
 
 def patch_symbols():
     if not os.path.exists(options.patch):
@@ -436,6 +474,7 @@ if options.binary is not None:
 
     produce_runtime_dep(bmap)
     produce_binary_trace(bmap)
+    produce_dlopen_trace()
     sys.exit(0)
 
 if len(args) < 1:
