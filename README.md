@@ -1,6 +1,6 @@
 # Overview
 
-Repository is a suite of tools for manipulating debian packages. At a high level, dep-find generates a dependency list for use with dep-symbol and dep-src. I have also created a script, dep-all.sh, that chains the use of all three scripts together.
+Repository is a suite of tools for manipulating debian packages. At a high level, dep-find generates a dependency list for use with dep-symbol and dep-src. 
 
 # dep-find
 
@@ -14,7 +14,7 @@ For the time being, you can grab a dependency list for a package with:
 
 which will create a file ``PACKAGE.dep`` in the current working directory. This can then be feed into ``dep-symbols``. For example, ``./dep-find.py -p wget`` will get the dependencies for ``wget`` and create ``wget.dep``.
 
-You might also find it useful to search for dependecies and packages with ``apt``: ``apt-cache depends PACKAGE`` and ``apt-cache search PACKAGE``.  
+You might also find it useful to search for dependencies and packages with ``apt``: ``apt-cache depends PACKAGE`` and ``apt-cache search PACKAGE``.  
 
 # dep-symbol
 
@@ -35,7 +35,7 @@ mkdir symbol-out
 
 # lzload
 
-lzload is a C library that does the actual shim / dummy library loading at runtime. Seperately, clone https://github.com/petablox/lzload and build and install with cmake:
+lzload is a C library that does the actual shim / dummy library loading at runtime. Separately, clone https://github.com/petablox/lzload and build and install with cmake:
 
 ```
 git@github.com:petablox/lzload.git
@@ -63,26 +63,125 @@ mkdir src-out
 ./dep-src.py -d src-out wget.dep
 ```
 
-### 2. Generating symbol database
+# End-to-End System Useage
 
-Generate a symbol repository for lzload to use to help find the correct symbol / library mapping at runtime. 
+### 1. Generate symbol repository
+
+Generate a symbol repository for lzload to use to help find the correct symbol / library mapping at runtime: 
 
 ```
 ./dep-symbol.py -d $HOME/var/symbol-out wget.dep
 ```
 
-### 3. Build dummy libraries
+This will produce a number of important files:
 
-Generate dummy libraries for use with lzload. The following will attempt to build the dummy libraries and then store them in src-out/lib
+* packages.txt : map of shared libraries found in the repository to their packages
+
+* binaries.txt : map of binaries found in the repository to their packages
+
+* meta/ : directory containing symbol and dependency information for each library
+
+  * meta/libz.so.SONAME.symbols contains all public symbols for libz
+  
+  * meta/libz.so.SONAME.symbols contains all of libz library dependencies 
+
+### 2. Generate source repository
+
+Generate a source repository for use with lzload:. 
 
 ```
 mkdir src-out
 ./dep-src.py -d src-out wget.dep
 ```
 
-### 4. Running with the dummy libraries.
+This will produce a number of important directories and files:
 
-There is a script at the top level, wget.sh, that demonstrates what environmnet variables need to be set to hook into the dummy libs. We need to set three environment variables: ``LZLOAD_LIB``, ``LZ_LIBRARY_PATH``, and ``LD_LIBRARY_PATH``.
+* src-out/lib : contains all of the successfully erased shared libraries
 
-``LZLOAD_LIB`` contains a colon seperate list of libraries that lzload should intercept. ``LZ_LIBRARY_PATH`` points to the actual path of the real libraries that lzload should load on a fault. ``LD_LIBRARY_PATH`` must point to the dummy libraries and liblzload.so. 
-~
+* src-out/mod-lib : contains all original libraries instrumented with special functions to handle variadic function if present in the original library
+
+* src-out/symbols.txt : contains the instrumented variadic functions for all libraries in mod-lib. This will need to be patched to the symbol repository in the next step.
+
+* src-out/wget.dep.stat : contains status information about the build
+
+### 3. Patch symbol repository with the source modified libraries
+
+```
+./dep-symbol.py -d $HOME/var/symbol-out -p src-out/symbols.txt
+```
+
+### 4. Check symbol repository against the source repository
+
+Perform the following check to measure the matchup between symbol repository and the source repository:
+
+```
+./dep-src -d src-out -c $HOME/var/symbol-out wget.dep
+```
+
+You should see output similar to the following (with different numbers):
+
+```
+=========================================================
+Total dependencies: 92
+Packages with libraries 56
+Packages with binaries 16
+Reachable packages (upper bound) 70
+Packages without libraries or binaries 17
+Missing packages 5
+Observable packages 61
+Observable libraries 47
+=========================================================
+[UNOBSERVABLE]: libzstd1 unobservable: excluded from build
+[UNERASED LIBRARIES]: library libzstd.so.1 from package libzstd1 not erased
+...
+=========================================================
+dumped full details on all dependencies to details.csv
+```
+
+Packages that are _reachable_ either contains .so libraries or executable binaries that would be installed to /bin, /sbin, /usr/bin, /usr/sbin) and packages that are _observable_ are ones that our system can observe either because it has binaries or successfully erased libraries.  I do not discriminate packages that we exclude during build; instead, I will report this in details.csv file. This has the nice side effect that we now have complete information about whether packages are excluded, or build, or are missing etc:
+
+```
+package,type,reachable,observable,erased,excluded,unerased
+libgpg-error-l10n,misc,False,False,False,False,0
+```
+
+### 4. Use lztrace to pre-run for lzload
+
+```
+LD_PRELOAD=/usr/local/lib/liblztrace.so wget google.com
+```
+
+This will produce several lztrace.trace files that help us create an upper bound on the libraries that should be loaded by lzload at runtime.
+
+### 5. Generate runtime information with dep-symbols
+
+First, execute fold.py to merge the lztrace.trace file information into one file:
+```
+scripts/fold.py -d . -t lztrace.trace
+```
+
+Then, run dep-symbol to build a list of runtime dependencies for all observed binaries and dlopened libraries:
+
+```
+dep-symbol.py -d $HOME/var/symbol-out -b `which wget` -t lztrace.trace
+```
+
+This will produce a number of important files:
+
+* runtime.txt : contains the set of libraries for lzload to load symbol information at runtime
+
+* binary.trace : contains the binaries used during the lztrace run (can be merged with lzload library usage)
+
+* dlopen.package.trace : contains the packages that we dynamically loaded via dlopen (can be merged with lzload library usage)
+
+* dlopen.library.trace : contains the libraries that we dynamically loaded via dlopen (can be merged with lzload library usage)
+
+### 6. Run lzload
+
+There is a script at the top level, wget.sh, that demonstrates what environment variables need to be set to hook into the dummy libs. We need to set three environment variables: LZLOAD_LIB, LZ_LIBRARY_PATH, and LD_LIBRARY_PATH.
+
+LZLOAD_LIB simple points to the runtime.txt generated in the step above. LZ_LIBRARY_PATH points to the actual path of the real libraries that lzload should load on a fault. LD_LIBRARY_PATH must point to the dummy libraries.
+
+### 7. Extra
+
+Because some libraries cause execution issues, we sometimes remove them from lib and mod-lib. Our spreadsheet contains a list of libraries that should be pulled out of the lib and mod-lib directories.
