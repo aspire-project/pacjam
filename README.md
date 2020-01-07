@@ -39,7 +39,7 @@ mkdir symbol-out
 ./dep-symbol.py -d symbol-out -m list.txt
 ```
 
-where list.txt is a lise of SONAME libraries one per line.
+where list.txt is a lise of SONAME libraries one per line. This will produce a file, lib-to-packages.txt which contains the packages the libraries belong to.
 
 # lzload
 
