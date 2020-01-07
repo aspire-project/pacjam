@@ -33,6 +33,14 @@ mkdir symbol-out
 ./dep-symbol.py -d symbol-out wget.dep
 ```
 
+### 2. Map list of libraries to packages 
+
+```
+./dep-symbol.py -d symbol-out -m list.txt
+```
+
+where list.txt is a lise of SONAME libraries one per line.
+
 # lzload
 
 lzload is a C library that does the actual shim / dummy library loading at runtime. Separately, clone https://github.com/petablox/lzload and build and install with cmake:
@@ -44,6 +52,7 @@ cmake .. -DCMAKE_C_COMPILER=/path/to/clang
 make
 sudo make install
 ```
+
 
 # dep-src
 
