@@ -593,6 +593,9 @@ class BuildInfo:
     def observable(self):
         return self.is_binary or (self.is_library and len(self.erased_libs) > 0)
 
+    def lib_observable(self):
+        return (self.is_library and len(self.erased_libs) > 0)
+
     def erased(self):
         return len(self.erased_libs) > 0
 
@@ -712,8 +715,27 @@ def check(deps, pkg_name):
 
     print("=========================================================")
     print("dumped full details on all dependencies to details.csv")
-    
-    print()
+    print("=========================================================")
+
+    mustincludes = set()
+
+    for bi in buildinfos:
+        if bi.is_library and not bi.lib_observable():
+            print("[UNOBSERVABLE-LIB]: {} unobservable: ".format(bi.package), end="")
+            mustincludes.add(bi.package)
+            if bi.excluded_build:
+                print("excluded from build")
+            else:
+                print("no erased libraries")
+
+
+    with open("must-include.txt", "w") as f:
+        for p in mustincludes:
+            f.write(p + "\n") 
+
+    print("=========================================================")
+    print("dumped must include pakcages dependencies to must-include.txt")
+    print("=========================================================")
                 
 usage = "usage: %prog [options] dependency-list"
 parser = OptionParser(usage=usage)
