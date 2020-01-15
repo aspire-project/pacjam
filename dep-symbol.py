@@ -429,7 +429,24 @@ def produce_dlopen_trace():
             f.write(t + " ")
         f.write("\n")
 
-    with open("dlopen.package.trace", "a") as f:
+def map_libraries():
+    if not os.path.exists(options.map):
+        print("{} does not exist".format(options.pathc))
+        return
+
+    lib_to_pack = read_package_list(os.path.join(options.working_dir, "packages.txt"))
+    trace = set(read_trace(options.map))
+
+    used = set()
+
+    for t in trace:
+        name = trim_libname(t)
+        if name in lib_to_pack:
+            used.add(lib_to_pack[name])
+        else:
+            print("warning: no mapping for {}:{} in packages.txt".format(name, t)) 
+
+    with open("lib-to-packages.txt", "w") as f:
         for p in used:
             f.write(p + " ")
         f.write("\n")        
@@ -462,8 +479,13 @@ parser.add_option('-t', '--trace', dest='trace', default=None, help='supply lztr
 parser.add_option('-b', '--bin', dest='binary', default=None, help='binary used to produce lztrace file', metavar='BINARY')
 parser.add_option('-o', '--outfile', dest='outfile', default="runtime.txt", help='output file for runtime deps', metavar='PATH')
 parser.add_option('-p', '--patch', dest='patch', default=None, help='patch symbols.txt from src repo onto symbol repo', metavar='PATH')
+parser.add_option('-m', '--map', dest='map', default=None, help='map a list of libraries to their packages', metavar='PATH')
 
 (options, args) = parser.parse_args()
+
+if options.map is not None:
+    map_libraries()
+    sys.exit(0)
 
 if options.patch is not None:
     patch_symbols()
