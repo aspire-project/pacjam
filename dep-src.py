@@ -565,7 +565,8 @@ def install(deps, pkg_name):
                 print("Installing {} from {} ".format(l, d))
                 shutil.move(p, installed_home)
             else:
-                print("Warning: {} not in dummy libs".format(l)) 
+                if (option.verbose): 
+                    print("Warning: {} not in dummy libs".format(l)) 
 
 def restore():
     installed_home = os.path.join(options.working_dir, "installed-lib")
