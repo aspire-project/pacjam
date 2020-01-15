@@ -97,7 +97,9 @@ def read_dependency_list(name):
         for d in f.read().splitlines():
             if d.startswith('#'):
                 continue
-            deps[d] = True
+            tok = d.split()
+            for t in tok:
+                deps[t.strip()] = True
     return deps
 
 def download_src(dep):
