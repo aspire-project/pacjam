@@ -428,6 +428,11 @@ def produce_dlopen_trace():
                 print("warning: no mapping for {}:{} in packages.txt".format(name, t)) 
             f.write(t + " ")
         f.write("\n")
+    
+    with open("dlopen.package.trace", "a") as f:
+        for p in used:
+            f.write(p + " ")
+        f.write("\n")
 
 def map_libraries():
     if not os.path.exists(options.map):

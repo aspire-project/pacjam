@@ -1,5 +1,7 @@
 #!/bin/bash
 
+export LZLOAD_MODE="STRICT"
+
 export LZLOAD_LIB=`realpath ./runtime.txt`
 
 # Path points to the real libraries
