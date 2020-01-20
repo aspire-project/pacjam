@@ -1,0 +1,80 @@
+FROM debian:wheezy
+
+ENV DEBIAN_FRONTEND=noninteractive \
+    LANG=C
+
+RUN cd /etc/apt && mv sources.list sources.list.bk && \
+      echo "deb http://fir01.seas.upenn.edu/debloat/debian-chrome jessie main" > sources.list && \
+      echo "deb-src http://fir01.seas.upenn.edu/debloat/debian-chrome jessie main" >> sources.list && \
+      apt-get -o Acquire::Check-Valid-Until=false update && \
+      apt-get -y dist-upgrade && \
+      apt-get -y autoremove --purge && \
+      apt-get install -y git vim sudo libpsl-dev debhelper wget gdb chromium
+
+RUN echo "deb http://apt.llvm.org/jessie/ llvm-toolchain-jessie main" >> /etc/apt/sources.list && \
+      echo "deb-src http://apt.llvm.org/jessie/ llvm-toolchain-jessie main" >> /etc/apt/sources.list && \
+      wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key | apt-key add - && \
+      apt-get -o Acquire::Check-Valid-Until=false update && \
+      apt-get install -y clang
+
+RUN wget https://github.com/Kitware/CMake/releases/download/v3.16.0-rc4/cmake-3.16.0-rc4-Linux-x86_64.sh && \
+    chmod +x cmake-3.16.0-rc4-Linux-x86_64.sh && \
+    ./cmake-3.16.0-rc4-Linux-x86_64.sh --skip-license --prefix=/usr/local && \
+    rm -f cmake-3.16.0-rc4-Linux-x86_64.sh
+
+# bear
+RUN wget https://github.com/rizsotto/Bear/archive/2.4.2.tar.gz && \
+    tar xf 2.4.2.tar.gz && \
+    cd Bear-2.4.2 && \
+    mkdir build && \
+    cd build && \
+    cmake .. && \
+    make && \
+    make install && \
+    cd ../.. && \
+    rm -rf Bear-2.4.2 2.4.2.tar.gz
+
+# openssl
+RUN wget https://www.openssl.org/source/openssl-1.1.1d.tar.gz && \
+    tar xf openssl-1.1.1d.tar.gz && \
+    cd openssl-1.1.1d && \
+    ./config && \
+    make -j32 && \
+    make install && \
+    ldconfig && \
+    cd .. && \
+    rm -rf openssl-1.1.1d*
+
+# python3
+RUN apt-get install -y zlib1g-dev && \
+    wget https://www.python.org/ftp/python/3.7.4/Python-3.7.4.tgz && \
+    tar xf Python-3.7.4.tgz && \
+    cd Python-3.7.4 && \
+    ./configure --with-ssl=/usr/local && \
+    make -j32 && \
+    make install && \
+    cd .. && \
+    rm -rf Python-3.7.4*
+
+# manually install nlohmann-json-dev package
+RUN wget http://fir01.seas.upenn.edu/debloat/debian-vlc/pool/main/n/nlohmann-json/nlohmann-json-dev_2.1.1-1.1_all.deb && \
+    dpkg -i nlohmann-json-dev_2.1.1-1.1_all.deb && \
+    rm -f nlohmann-json-dev_2.1.1-1.1_all.deb
+
+# ssh-server & x11-fowrwaring
+RUN apt-get install -y ssh xauth && \
+      mkdir /var/run/sshd && \
+      echo "X11UseLocalhost no" >> /etc/ssh/sshd_config
+
+RUN useradd -m -s /bin/bash -G sudo aspire && \
+    (echo "ai4code"; echo "ai4code") | passwd aspire && \
+    echo 'export KLLVM=$HOME/llvm\nexport LANG=C' >> /home/aspire/.bashrc && \
+    echo "alias sudo='sudo KLLVM=\$KLLVM'" >> /home/aspire/.bashrc
+
+COPY src/install-*.sh /home/aspire/
+RUN chown aspire.aspire -R /home/aspire/* /home/aspire/.[a-z]*
+
+EXPOSE 22
+
+CMD ["/usr/sbin/sshd", "-D"]
+
