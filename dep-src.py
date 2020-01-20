@@ -97,7 +97,9 @@ def read_dependency_list(name):
         for d in f.read().splitlines():
             if d.startswith('#'):
                 continue
-            deps[d] = True
+            tok = d.split()
+            for t in tok:
+                deps[t.strip()] = True
     return deps
 
 def download_src(dep):
@@ -563,7 +565,8 @@ def install(deps, pkg_name):
                 print("Installing {} from {} ".format(l, d))
                 shutil.move(p, installed_home)
             else:
-                print("Warning: {} not in dummy libs".format(l)) 
+                if (options.verbose): 
+                    print("Warning: {} not in dummy libs".format(l)) 
 
 def restore():
     installed_home = os.path.join(options.working_dir, "installed-lib")
